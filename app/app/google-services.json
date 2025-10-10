@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "325376076753",
+    "project_id": "road-condition-detection-dd79a",
+    "storage_bucket": "road-condition-detection-dd79a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:325376076753:android:b0cd73650f77971f118ef0",
+        "android_client_info": {
+          "package_name": "com.example.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1pd3FLoQV0vNt6uOif72EoQ-GSGb0K6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

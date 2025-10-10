@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* Đảm bảo toàn bộ ứng dụng sử dụng font Inter */
+body {
+    /* Tailwind đã được tải, nhưng đặt lại font family và background */
+    font-family: 'Inter', sans-serif;
+    background-color: #f7f7f7;
+}
+
+/* Tùy chỉnh thanh trượt (slider) */
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    /* Sử dụng màu tùy chỉnh 'primary-blue' đã định nghĩa trong Tailwind config */
+    background: #1E40AF; 
+    cursor: pointer;
+}
