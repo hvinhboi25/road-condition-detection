@@ -6,6 +6,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
+import android.media.MediaMetadataRetriever
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -70,21 +71,337 @@ fun DeepLearningApp(modifier: Modifier = Modifier) {
     val firebaseService = remember { FirebaseService(context) }
     val cloudinaryService = remember { CloudinaryService(context) }
     val locationService = remember { LocationService(context) }
+    // Helper to upload detections (used for both image and video flows)
+    fun uploadDetections(imageWithBoxes: Bitmap, results: List<Detection>, isLocationPermissionGranted: Boolean, originalVideoUri: Uri? = null, videoDetections: List<Map<String, Any>>? = null) {
+        if (results.isEmpty()) {
+            android.util.Log.d("MainActivity", "❌ Không phát hiện ổ gà - không gửi lên Firebase")
+            return
+        }
+
+        android.util.Log.d("MainActivity", "✅ Phát hiện ${results.size} ổ gà - sẽ gửi lên Firebase")
+
+        // Get current location before saving to Firebase
+        android.util.Log.d("MainActivity", "🌍 === GETTING LOCATION ===")
+        android.util.Log.d("MainActivity", "Getting current location...")
+
+        if (isLocationPermissionGranted) {
+            android.util.Log.d("MainActivity", "✅ Location permission granted")
+            locationService.getCurrentLocation(
+                onSuccess = { locationData ->
+                    android.util.Log.d("MainActivity", "✅ Location obtained: ${locationData.latitude}, ${locationData.longitude}")
+                    android.util.Log.d("MainActivity", "=== FIREBASE SAVE WITH LOCATION ===")
+                    // If original video exists, upload it first, then image
+                    if (originalVideoUri != null) {
+                        cloudinaryService.uploadVideo(
+                            uri = originalVideoUri,
+                            onSuccess = { videoUrl ->
+                                cloudinaryService.uploadImageWithBoxes(
+                                    bitmap = imageWithBoxes,
+                                    detections = results,
+                                    onSuccess = { imageUrl ->
+                                        firebaseService.saveDetectionToFirestore(imageUrl, results, locationData, videoUrl, videoDetections)
+                                        firebaseService.saveDailyStats(results.size)
+                                    },
+                                    onFailure = { e ->
+                                        firebaseService.saveDetectionToFirestore("upload_failed", results, locationData, videoUrl, videoDetections)
+                                        firebaseService.saveDailyStats(results.size)
+                                    }
+                                )
+                            },
+                            onFailure = { e ->
+                                // video upload failed, continue with image only
+                                cloudinaryService.uploadImageWithBoxes(
+                                    bitmap = imageWithBoxes,
+                                    detections = results,
+                                    onSuccess = { imageUrl ->
+                                        firebaseService.saveDetectionToFirestore(imageUrl, results, locationData, null, videoDetections)
+                                        firebaseService.saveDailyStats(results.size)
+                                    },
+                                    onFailure = { e2 ->
+                                        firebaseService.saveDetectionToFirestore("upload_failed", results, locationData, null, videoDetections)
+                                        firebaseService.saveDailyStats(results.size)
+                                    }
+                                )
+                            }
+                        )
+                    } else {
+                        cloudinaryService.uploadImageWithBoxes(
+                            bitmap = imageWithBoxes,
+                            detections = results,
+                            onSuccess = { imageUrl ->
+                                firebaseService.saveDetectionToFirestore(imageUrl, results, locationData, null)
+                                firebaseService.saveDailyStats(results.size)
+                            },
+                            onFailure = { exception ->
+                                firebaseService.saveDetectionToFirestore("upload_failed", results, locationData, null)
+                                firebaseService.saveDailyStats(results.size)
+                            }
+                        )
+                    }
+                },
+                onFailure = { exception ->
+                    android.util.Log.w("MainActivity", "⚠️ Failed to get location: ${exception.message}")
+                    // Try to get last known location
+                    locationService.getLastKnownLocation(
+                        onSuccess = { locationData ->
+                            android.util.Log.d("MainActivity", "✅ Using last known location: ${locationData.latitude}, ${locationData.longitude}")
+                            if (originalVideoUri != null) {
+                                cloudinaryService.uploadVideo(
+                                    uri = originalVideoUri,
+                                    onSuccess = { videoUrl ->
+                                        cloudinaryService.uploadImageWithBoxes(
+                                            bitmap = imageWithBoxes,
+                                            detections = results,
+                                            onSuccess = { imageUrl ->
+                                firebaseService.saveDetectionToFirestore(imageUrl, results, locationData, videoUrl, videoDetections)
+                                                firebaseService.saveDetectionToFirestore(imageUrl, results, locationData, videoUrl, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            },
+                                            onFailure = { uploadException ->
+                                                firebaseService.saveDetectionToFirestore("upload_failed", results, locationData, videoUrl, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            }
+                                        )
+                                    },
+                                    onFailure = { _ ->
+                                        cloudinaryService.uploadImageWithBoxes(
+                                            bitmap = imageWithBoxes,
+                                            detections = results,
+                                            onSuccess = { imageUrl ->
+                                                firebaseService.saveDetectionToFirestore(imageUrl, results, locationData, null, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            },
+                                            onFailure = { _ ->
+                                                firebaseService.saveDetectionToFirestore("upload_failed", results, locationData, null, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            }
+                                        )
+                                    }
+                                )
+                            } else {
+                                cloudinaryService.uploadImageWithBoxes(
+                                    bitmap = imageWithBoxes,
+                                    detections = results,
+                                    onSuccess = { imageUrl ->
+                                        firebaseService.saveDetectionToFirestore(imageUrl, results, locationData, null)
+                                        firebaseService.saveDailyStats(results.size)
+                                    },
+                                    onFailure = { uploadException ->
+                                        firebaseService.saveDetectionToFirestore("upload_failed", results, locationData, null)
+                                        firebaseService.saveDailyStats(results.size)
+                                    }
+                                )
+                            }
+                        },
+                        onFailure = { lastException ->
+                            android.util.Log.w("MainActivity", "⚠️ No location available: ${lastException.message}")
+                            if (originalVideoUri != null) {
+                                cloudinaryService.uploadVideo(
+                                    uri = originalVideoUri,
+                                    onSuccess = { videoUrl ->
+                                        cloudinaryService.uploadImageWithBoxes(
+                                            bitmap = imageWithBoxes,
+                                            detections = results,
+                                            onSuccess = { imageUrl ->
+                                                firebaseService.saveDetectionToFirestore(imageUrl, results, null, videoUrl, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            },
+                                            onFailure = { _ ->
+                                                firebaseService.saveDetectionToFirestore("upload_failed", results, null, videoUrl, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            }
+                                        )
+                                    },
+                                    onFailure = { _ ->
+                                        cloudinaryService.uploadImageWithBoxes(
+                                            bitmap = imageWithBoxes,
+                                            detections = results,
+                                            onSuccess = { imageUrl ->
+                                                firebaseService.saveDetectionToFirestore(imageUrl, results, null, null, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            },
+                                            onFailure = { _ ->
+                                                firebaseService.saveDetectionToFirestore("upload_failed", results, null, null, videoDetections)
+                                                firebaseService.saveDailyStats(results.size)
+                                            }
+                                        )
+                                    }
+                                )
+                            } else {
+                                cloudinaryService.uploadImageWithBoxes(
+                                    bitmap = imageWithBoxes,
+                                    detections = results,
+                                    onSuccess = { imageUrl ->
+                                        firebaseService.saveDetectionToFirestore(imageUrl, results, null, null)
+                                        firebaseService.saveDailyStats(results.size)
+                                    },
+                                    onFailure = { _ ->
+                                        firebaseService.saveDetectionToFirestore("upload_failed", results, null, null)
+                                        firebaseService.saveDailyStats(results.size)
+                                    }
+                                )
+                            }
+                        }
+                    )
+                }
+            )
+        } else {
+            android.util.Log.w("MainActivity", "⚠️ Location permission not granted, saving without location")
+            if (originalVideoUri != null) {
+                cloudinaryService.uploadVideo(
+                    uri = originalVideoUri,
+                    onSuccess = { videoUrl ->
+                        cloudinaryService.uploadImageWithBoxes(
+                            bitmap = imageWithBoxes,
+                            detections = results,
+                            onSuccess = { imageUrl ->
+                                firebaseService.saveDetectionToFirestore(imageUrl, results, null, videoUrl, videoDetections)
+                                firebaseService.saveDailyStats(results.size)
+                            },
+                            onFailure = { _ ->
+                                firebaseService.saveDetectionToFirestore("upload_failed", results, null, videoUrl, videoDetections)
+                                firebaseService.saveDailyStats(results.size)
+                            }
+                        )
+                    },
+                    onFailure = { _ ->
+                        cloudinaryService.uploadImageWithBoxes(
+                            bitmap = imageWithBoxes,
+                            detections = results,
+                            onSuccess = { imageUrl ->
+                                firebaseService.saveDetectionToFirestore(imageUrl, results, null, null, videoDetections)
+                                firebaseService.saveDailyStats(results.size)
+                            },
+                            onFailure = { _ ->
+                                firebaseService.saveDetectionToFirestore("upload_failed", results, null, null, videoDetections)
+                                firebaseService.saveDailyStats(results.size)
+                            }
+                        )
+                    }
+                )
+            } else {
+                cloudinaryService.uploadImageWithBoxes(
+                    bitmap = imageWithBoxes,
+                    detections = results,
+                    onSuccess = { imageUrl ->
+                        firebaseService.saveDetectionToFirestore(imageUrl, results, null, null)
+                        firebaseService.saveDailyStats(results.size)
+                    },
+                    onFailure = { _ ->
+                        firebaseService.saveDetectionToFirestore("upload_failed", results, null, null)
+                        firebaseService.saveDailyStats(results.size)
+                    }
+                )
+            }
+        }
+    }
+
     
     // Permissions
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
     
-    // Image picker launcher
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+    // Document picker (images + videos)
+    val mediaPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
         uri?.let {
             try {
-                val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, it)
-                selectedImage = bitmap
-                resultImage = null
-                predictions = emptyList()
+                val mime = context.contentResolver.getType(it) ?: ""
+                if (mime.startsWith("video")) {
+                    // manual location dialog removed (rollback)
+                    // Process video frames automatically
+                    isLoading = true
+                    resultImage = null
+                    predictions = emptyList()
+
+                    Thread {
+                        val retriever = MediaMetadataRetriever()
+                        var bestFrame: Bitmap? = null
+                        var bestDetections: List<Detection> = emptyList()
+                        val videoDetectionsTimeline = mutableListOf<Map<String, Any>>()
+                        try {
+                            retriever.setDataSource(context, it)
+                            val durationMs = (retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull()
+                                ?: 0L)
+                            val totalSamples = 20 // cap number of frames to evaluate
+                            val step = if (durationMs > 0) durationMs / totalSamples else 0L
+
+                            var t = 0L
+                            var samples = 0
+                            while (samples < totalSamples) {
+                                val frame = retriever.getFrameAtTime(t * 1000, MediaMetadataRetriever.OPTION_CLOSEST)
+                                if (frame != null) {
+                                    val dets = tensorFlowHelper.predict(frame)
+                                    // collect per-sample detections with timestamp (ms)
+                                    if (dets.isNotEmpty()) {
+                                        val detectionsMap = dets.map { d ->
+                                            mapOf(
+                                                "className" to d.className,
+                                                "confidence" to d.confidence,
+                                                // store normalized xywh (as current ImageUtils expects)
+                                                "x" to d.x,
+                                                "y" to d.y,
+                                                "width" to d.width,
+                                                "height" to d.height
+                                            )
+                                        }
+                                        videoDetectionsTimeline.add(
+                                            mapOf(
+                                                "timeMs" to t,
+                                                "detections" to detectionsMap
+                                            )
+                                        )
+                                    }
+                                    if (dets.isNotEmpty() && dets.size > bestDetections.size) {
+                                        bestDetections = dets
+                                        bestFrame = frame
+                                    }
+                                }
+                                if (step <= 0L) break
+                                t += step
+                                samples++
+                            }
+
+                            if (bestFrame != null) {
+                                val imageWithBoxes = ImageUtils.drawBoundingBoxes(bestFrame!!, bestDetections)
+
+                                // Immediately upload detections for video input (original flow)
+                                uploadDetections(
+                                    imageWithBoxes,
+                                    bestDetections,
+                                    isLocationPermissionGranted = locationPermissionState.status.isGranted,
+                                    originalVideoUri = it,
+                                    videoDetections = videoDetectionsTimeline
+                                )
+
+                                // Update UI on main thread
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    selectedImage = bestFrame
+                                    resultImage = imageWithBoxes
+                                    predictions = bestDetections
+                                    isLoading = false
+                                }
+                            } else {
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    isLoading = false
+                                }
+                            }
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                            android.os.Handler(android.os.Looper.getMainLooper()).post { isLoading = false }
+                        } finally {
+                            try { retriever.release() } catch (_: Exception) {}
+                        }
+                    }.start()
+                } else {
+                    // Image flow
+                    val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+                    // manual location dialog removed (rollback)
+                    selectedImage = bitmap
+                    resultImage = null
+                    predictions = emptyList()
+                }
             } catch (e: IOException) {
                 e.printStackTrace()
             }
@@ -204,7 +521,7 @@ fun DeepLearningApp(modifier: Modifier = Modifier) {
         ) {
             // Gallery Button
             Button(
-                onClick = { imagePickerLauncher.launch("image/*") },
+                onClick = { mediaPickerLauncher.launch(arrayOf("image/*", "video/*")) },
                 modifier = Modifier
                     .weight(1f)
                     .height(56.dp),
@@ -300,104 +617,8 @@ fun DeepLearningApp(modifier: Modifier = Modifier) {
                         
                         // Draw bounding boxes on image
                         val imageWithBoxes = ImageUtils.drawBoundingBoxes(bitmap, results)
-                        
-                        // Chỉ gửi lên Firebase nếu phát hiện được ổ gà
-                        if (results.isNotEmpty()) {
-                            android.util.Log.d("MainActivity", "✅ Phát hiện ${results.size} ổ gà - sẽ gửi lên Firebase")
-                            
-                            // Get current location before saving to Firebase
-                            android.util.Log.d("MainActivity", "🌍 === GETTING LOCATION ===")
-                            android.util.Log.d("MainActivity", "Getting current location...")
-                            
-                            // Check if location permission is granted
-                            if (locationPermissionState.status.isGranted) {
-                                android.util.Log.d("MainActivity", "✅ Location permission granted")
-                                locationService.getCurrentLocation(
-                                    onSuccess = { locationData ->
-                                        android.util.Log.d("MainActivity", "✅ Location obtained: ${locationData.latitude}, ${locationData.longitude}")
-                                        // Save to Firebase with location
-                                        android.util.Log.d("MainActivity", "=== FIREBASE SAVE WITH LOCATION ===")
-                                        cloudinaryService.uploadImageWithBoxes(
-                                            bitmap = imageWithBoxes,
-                                            detections = results,
-                                            onSuccess = { imageUrl ->
-                                                android.util.Log.d("MainActivity", "✅ Image uploaded successfully: $imageUrl")
-                                                firebaseService.saveDetectionToFirestore(imageUrl, results, locationData)
-                                                firebaseService.saveDailyStats(results.size)
-                                                android.util.Log.d("MainActivity", "✅ All Firebase operations completed with location!")
-                                            },
-                                            onFailure = { exception ->
-                                                android.util.Log.e("MainActivity", "❌ Image upload failed", exception)
-                                                firebaseService.saveDetectionToFirestore("upload_failed", results, locationData)
-                                                firebaseService.saveDailyStats(results.size)
-                                                android.util.Log.d("MainActivity", "✅ Fallback save completed with location!")
-                                            }
-                                        )
-                                    },
-                                    onFailure = { exception ->
-                                        android.util.Log.w("MainActivity", "⚠️ Failed to get location: ${exception.message}")
-                                        // Try to get last known location
-                                        locationService.getLastKnownLocation(
-                                            onSuccess = { locationData ->
-                                                android.util.Log.d("MainActivity", "✅ Using last known location: ${locationData.latitude}, ${locationData.longitude}")
-                                                // Save to Firebase with last known location
-                                                cloudinaryService.uploadImageWithBoxes(
-                                                    bitmap = imageWithBoxes,
-                                                    detections = results,
-                                                    onSuccess = { imageUrl ->
-                                                        firebaseService.saveDetectionToFirestore(imageUrl, results, locationData)
-                                                        firebaseService.saveDailyStats(results.size)
-                                                        android.util.Log.d("MainActivity", "✅ Firebase save completed with last known location!")
-                                                    },
-                                                    onFailure = { uploadException ->
-                                                        firebaseService.saveDetectionToFirestore("upload_failed", results, locationData)
-                                                        firebaseService.saveDailyStats(results.size)
-                                                        android.util.Log.d("MainActivity", "✅ Fallback save completed with last known location!")
-                                                    }
-                                                )
-                                            },
-                                            onFailure = { lastException ->
-                                                android.util.Log.w("MainActivity", "⚠️ No location available: ${lastException.message}")
-                                                // Save to Firebase without location
-                                                cloudinaryService.uploadImageWithBoxes(
-                                                    bitmap = imageWithBoxes,
-                                                    detections = results,
-                                                    onSuccess = { imageUrl ->
-                                                        firebaseService.saveDetectionToFirestore(imageUrl, results, null)
-                                                        firebaseService.saveDailyStats(results.size)
-                                                        android.util.Log.d("MainActivity", "✅ Firebase save completed without location!")
-                                                    },
-                                                    onFailure = { uploadException ->
-                                                        firebaseService.saveDetectionToFirestore("upload_failed", results, null)
-                                                        firebaseService.saveDailyStats(results.size)
-                                                        android.util.Log.d("MainActivity", "✅ Fallback save completed without location!")
-                                                    }
-                                                )
-                                            }
-                                        )
-                                    }
-                                )
-                            } else {
-                                android.util.Log.w("MainActivity", "⚠️ Location permission not granted, saving without location")
-                                // Save to Firebase without location
-                                cloudinaryService.uploadImageWithBoxes(
-                                    bitmap = imageWithBoxes,
-                                    detections = results,
-                                    onSuccess = { imageUrl ->
-                                        firebaseService.saveDetectionToFirestore(imageUrl, results, null)
-                                        firebaseService.saveDailyStats(results.size)
-                                        android.util.Log.d("MainActivity", "✅ Firebase save completed without location!")
-                                    },
-                                    onFailure = { uploadException ->
-                                        firebaseService.saveDetectionToFirestore("upload_failed", results, null)
-                                        firebaseService.saveDailyStats(results.size)
-                                        android.util.Log.d("MainActivity", "✅ Fallback save completed without location!")
-                                    }
-                                )
-                            }
-                        } else {
-                            android.util.Log.d("MainActivity", "❌ Không phát hiện ổ gà - không gửi lên Firebase")
-                        }
+                        // Upload detections (if any)
+                        uploadDetections(imageWithBoxes, results, isLocationPermissionGranted = locationPermissionState.status.isGranted)
                         
                         // Update UI on main thread
                         android.os.Handler(android.os.Looper.getMainLooper()).post {

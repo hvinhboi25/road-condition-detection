@@ -41,7 +41,13 @@ class FirebaseService(private val context: Context) {
     /**
      * Lưu kết quả phát hiện vào Firestore
      */
-    fun saveDetectionToFirestore(imageUrl: String, detections: List<Detection>, locationData: LocationData? = null) {
+    fun saveDetectionToFirestore(
+        imageUrl: String,
+        detections: List<Detection>,
+        locationData: LocationData? = null,
+        videoUrl: String? = null,
+        videoDetections: List<Map<String, Any>>? = null
+    ) {
         Log.d("FirebaseService", "=== STARTING SAVE TO FIRESTORE ===")
         Log.d("FirebaseService", "Image URL: $imageUrl")
         Log.d("FirebaseService", "Detections count: ${detections.size}")
@@ -50,6 +56,8 @@ class FirebaseService(private val context: Context) {
         // Chuẩn bị dữ liệu detection
         val detectionData = hashMapOf(
             "imageUrl" to imageUrl,
+            "videoUrl" to videoUrl,
+            "videoDetections" to videoDetections,
             "detections" to detections.map { detection ->
                 mapOf(
                     "className" to detection.className,

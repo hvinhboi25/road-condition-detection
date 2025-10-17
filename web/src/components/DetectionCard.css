@@ -128,12 +128,29 @@
   border-top: 1px solid #e5e7eb;
   padding-top: 0.75rem;
   margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .full-time {
   font-size: 0.75rem;
   color: #9ca3af;
   font-weight: 500;
+}
+
+.view-video-button {
+  background: #111827;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.view-video-button:hover {
+  background: #1f2937;
 }
 
 /* Responsive Detection Card */

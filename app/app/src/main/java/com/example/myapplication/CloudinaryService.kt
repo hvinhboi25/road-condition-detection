@@ -2,6 +2,7 @@ package com.example.myapplication
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import android.util.Log
 import com.cloudinary.android.MediaManager
 import com.cloudinary.android.callback.ErrorInfo
@@ -96,6 +97,83 @@ class CloudinaryService(private val context: Context) {
                 
         } catch (e: Exception) {
             Log.e("CloudinaryService", "❌ Upload failed with exception", e)
+            onFailure(e)
+        }
+    }
+
+    fun uploadVideo(
+        uri: Uri,
+        onSuccess: (String) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        Log.d("CloudinaryService", "🔄 === STARTING CLOUDINARY VIDEO UPLOAD ===")
+        try {
+            MediaManager.get().upload(uri)
+                .option("resource_type", "video")
+                .option("folder", "road_detection/videos")
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String) {
+                        Log.d("CloudinaryService", "🚀 Video upload started with ID: $requestId")
+                    }
+
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
+                        val progress = if (totalBytes > 0) (bytes * 100 / totalBytes).toInt() else 0
+                        Log.d("CloudinaryService", "📈 Video upload progress: $progress% ($bytes/$totalBytes bytes)")
+                    }
+
+                    override fun onSuccess(requestId: String, resultData: Map<*, *>?) {
+                        val videoUrl = resultData?.get("secure_url") as? String
+                        if (videoUrl != null) {
+                            Log.d("CloudinaryService", "✅ Video uploaded successfully!")
+                            Log.d("CloudinaryService", "🔗 Video URL: $videoUrl")
+                            onSuccess(videoUrl)
+                        } else {
+                            Log.e("CloudinaryService", "❌ No video URL returned from Cloudinary")
+                            onFailure(Exception("No video URL returned from Cloudinary"))
+                        }
+                    }
+
+                    override fun onError(requestId: String, error: ErrorInfo) {
+                        val errorMsg = "Video upload failed: ${error.description}"
+                        Log.e("CloudinaryService", "❌ $errorMsg")
+                        onFailure(Exception(errorMsg))
+                    }
+
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {
+                        Log.w("CloudinaryService", "🔄 Video upload rescheduled: ${error.description}")
+                    }
+                })
+                .dispatch()
+        } catch (e: Exception) {
+            Log.e("CloudinaryService", "❌ Video upload failed with exception", e)
+            onFailure(e)
+        }
+    }
+
+    fun uploadVideoFile(
+        filePath: String,
+        onSuccess: (String) -> Unit,
+        onFailure: (Exception) -> Unit
+    ) {
+        Log.d("CloudinaryService", "🔄 === STARTING CLOUDINARY VIDEO FILE UPLOAD ===")
+        try {
+            MediaManager.get().upload(filePath)
+                .option("resource_type", "video")
+                .option("folder", "road_detection/annotated")
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String) {}
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {}
+                    override fun onSuccess(requestId: String, resultData: Map<*, *>?) {
+                        val url = resultData?.get("secure_url") as? String
+                        if (url != null) onSuccess(url) else onFailure(Exception("No URL"))
+                    }
+                    override fun onError(requestId: String, error: ErrorInfo) {
+                        onFailure(Exception(error.description))
+                    }
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {}
+                })
+                .dispatch()
+        } catch (e: Exception) {
             onFailure(e)
         }
     }

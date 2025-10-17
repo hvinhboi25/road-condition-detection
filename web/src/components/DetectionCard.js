@@ -61,6 +61,18 @@ const DetectionCard = ({ item, onCardClick, getConditionIcon, getConditionColor,
               : item.timestamp?.toDate?.().toLocaleString('vi-VN')
             }
           </span>
+
+          {item.videoUrl && (
+            <a
+              className="view-video-button"
+              href={item.videoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              🎬 Xem video
+            </a>
+          )}
         </div>
       </div>
     </div>
