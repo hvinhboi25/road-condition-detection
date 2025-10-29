@@ -25,6 +25,19 @@ export default function App() {
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  // Chuẩn hóa tọa độ từ nhiều cấu trúc dữ liệu khác nhau
+  const normalizeCoords = useCallback((raw) => {
+    if (!raw) return { lat: 0, lng: 0 };
+    const candLat = raw.lat ?? raw.latitude ?? raw.Latitude ?? raw.latitud ?? raw.y ?? raw._lat ?? raw.latLng?.lat ?? raw.coords?.lat ?? raw.location?.lat ?? raw.geo?.lat ?? raw.geopoint?.latitude ?? raw.geopoint?.lat ?? raw.position?.lat ?? raw.latitudeE7;
+    const candLng = raw.lng ?? raw.lon ?? raw.long ?? raw.longitude ?? raw.Longitude ?? raw.x ?? raw._long ?? raw.latLng?.lng ?? raw.coords?.lng ?? raw.location?.lng ?? raw.geo?.lng ?? raw.geopoint?.longitude ?? raw.geopoint?.lng ?? raw.position?.lng ?? raw.longitudeE7;
+    let lat = typeof candLat === 'string' ? parseFloat(candLat) : candLat;
+    let lng = typeof candLng === 'string' ? parseFloat(candLng) : candLng;
+    if (Math.abs(lat) > 90 && Math.abs(lat) <= 900000000) lat = lat / 1e7;
+    if (Math.abs(lng) > 180 && Math.abs(lng) <= 1800000000) lng = lng / 1e7;
+    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return { lat: 0, lng: 0 };
+    return { lat, lng };
+  }, []);
+
   
   // Sử dụng hook thời gian thực
   const { currentTime, isOnline, formatTime, formatTimeShort, formatDate, getTimeAgo } = useRealTime();
@@ -51,9 +64,13 @@ export default function App() {
 
   // Hàm để lấy địa chỉ từ tọa độ
   const getAddressFromCoordinates = useCallback(async (lat, lng) => {
-    if (!lat || !lng) return 'Tọa độ không hợp lệ';
+    const latNum = typeof lat === 'string' ? parseFloat(lat) : lat;
+    const lngNum = typeof lng === 'string' ? parseFloat(lng) : lng;
+    if (!latNum || !lngNum || latNum === 0 || lngNum === 0 || isNaN(latNum) || isNaN(lngNum)) {
+      return 'Tọa độ không hợp lệ';
+    }
     
-    const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    const cacheKey = `${latNum.toFixed(6)},${lngNum.toFixed(6)}`;
     
     // Kiểm tra cache trước
     if (addressCache.has(cacheKey)) {
@@ -62,7 +79,9 @@ export default function App() {
     
     try {
       setGeocodingLoading(true);
-      const address = await geocodingService.reverseGeocode(lat, lng);
+      console.log(`Đang geocoding tọa độ: ${latNum}, ${lngNum}`);
+      const address = await geocodingService.reverseGeocode(latNum, lngNum);
+      console.log(`Kết quả geocoding: ${address}`);
       
       // Cập nhật cache
       setAddressCache(prev => new Map(prev).set(cacheKey, address));
@@ -70,7 +89,7 @@ export default function App() {
       return address;
     } catch (error) {
       console.error('Lỗi khi lấy địa chỉ:', error);
-      return `Vị trí: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+      return `Vị trí: ${latNum?.toFixed?.(4) || latNum}, ${lngNum?.toFixed?.(4) || lngNum}`;
     } finally {
       setGeocodingLoading(false);
     }
@@ -78,37 +97,48 @@ export default function App() {
 
   useEffect(() => {
     const q = query(collection(db, "detections"), orderBy("timestamp", "desc"));
+    const normalizeCoords = (raw) => {
+      if (!raw) return { lat: 0, lng: 0 };
+      // chấp nhận nhiều biến thể trường
+      const candLat = raw.lat ?? raw.latitude ?? raw.Latitude ?? raw.latitud ?? raw.y ?? raw._lat ?? raw.latLng?.lat ?? raw.coords?.lat ?? raw.location?.lat ?? raw.geo?.lat ?? raw.geopoint?.latitude ?? raw.geopoint?.lat ?? raw.position?.lat ?? raw.latitudeE7;
+      const candLng = raw.lng ?? raw.lon ?? raw.long ?? raw.longitude ?? raw.Longitude ?? raw.x ?? raw._long ?? raw.latLng?.lng ?? raw.coords?.lng ?? raw.location?.lng ?? raw.geo?.lng ?? raw.geopoint?.longitude ?? raw.geopoint?.lng ?? raw.position?.lng ?? raw.longitudeE7;
+      let lat = typeof candLat === 'string' ? parseFloat(candLat) : candLat;
+      let lng = typeof candLng === 'string' ? parseFloat(candLng) : candLng;
+      // fix đơn vị E7
+      if (Math.abs(lat) > 90 && Math.abs(lat) <= 900000000) lat = lat / 1e7;
+      if (Math.abs(lng) > 180 && Math.abs(lng) <= 1800000000) lng = lng / 1e7;
+      if (!lat || !lng || isNaN(lat) || isNaN(lng)) return { lat: 0, lng: 0 };
+      return { lat, lng };
+    };
+
     const unsub = onSnapshot(q, async (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setItems(data);
-      
-      // Xử lý địa chỉ cho các items mới
-      const processedData = await Promise.all(data.map(async (item) => {
-        // Kiểm tra nếu có tọa độ và chưa có địa chỉ
-        if (item.location?.lat && item.location?.lng && !item.location?.address) {
-          const address = await getAddressFromCoordinates(item.location.lat, item.location.lng);
-          return {
+
+      // Xử lý địa chỉ tuần tự để tránh vượt rate-limit của Nominatim
+      const processedData = [];
+      for (const item of data) {
+        const normalized = normalizeCoords(item.location || item);
+        const hasValidCoordinates = normalized.lat && normalized.lng && normalized.lat !== 0 && normalized.lng !== 0;
+
+        if (hasValidCoordinates) {
+          if (!item.location?.address || item.location.address === 'Vị trí không xác định') {
+            const address = await getAddressFromCoordinates(normalized.lat, normalized.lng);
+            processedData.push({
+              ...item,
+              location: { ...(item.location || {}), lat: normalized.lat, lng: normalized.lng, address }
+            });
+          } else {
+            processedData.push(item);
+          }
+        } else {
+          processedData.push({
             ...item,
-            location: {
-              ...item.location,
-              address
-            }
-          };
+            location: { lat: 0, lng: 0, address: 'Vị trí không xác định' }
+          });
         }
-        // Nếu không có tọa độ, tạo fallback
-        if (!item.location?.lat || !item.location?.lng) {
-          return {
-            ...item,
-            location: {
-              lat: 0,
-              lng: 0,
-              address: 'Vị trí không xác định'
-            }
-          };
-        }
-        return item;
-      }));
-      
+      }
+
       setItems(processedData);
       
       // Lấy thời gian mới nhất từ Firebase
@@ -129,7 +159,8 @@ export default function App() {
       
       // Extract unique locations for filter
       const locations = [...new Set(processedData.map(item => {
-        return item.location?.address || `${item.location?.lat?.toFixed(4)}, ${item.location?.lng?.toFixed(4)}`;
+        const { lat, lng } = normalizeCoords(item.location || item);
+        return item.location?.address || (lat && lng ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : null);
       }).filter(Boolean))];
       setUniqueLocations(locations);
       
@@ -209,6 +240,54 @@ export default function App() {
     setSelectedLocation("all");
   };
 
+  // Hàm để test geocoding (Nominatim)
+  const testApiKey = async () => {
+    console.log('Đang test Nominatim...');
+    setGeocodingLoading(true);
+    try {
+      // Test với tọa độ Hà Nội
+      const testLat = 21.0285;
+      const testLng = 105.8542;
+      const address = await geocodingService.reverseGeocode(testLat, testLng);
+      alert(`✅ Nominatim hoạt động!\n\nĐịa chỉ: ${address || 'Không có địa chỉ'}`);
+    } catch (error) {
+      console.error('Lỗi khi test Nominatim:', error);
+      alert(`❌ Lỗi khi test Nominatim:\n\n${error.message}`);
+    } finally {
+      setGeocodingLoading(false);
+    }
+  };
+
+  // Hàm để test geocoding cho tất cả items
+  const testGeocodingForAllItems = async () => {
+    console.log('Bắt đầu test geocoding cho tất cả items...');
+    setGeocodingLoading(true);
+    
+    const updatedItems = await Promise.all(items.map(async (item) => {
+      const hasValidCoordinates = item.location?.lat && 
+                                 item.location?.lng && 
+                                 item.location.lat !== 0 && 
+                                 item.location.lng !== 0;
+      
+      if (hasValidCoordinates && (!item.location?.address || item.location.address === 'Vị trí không xác định')) {
+        console.log(`Geocoding item ${item.id} với tọa độ: ${item.location.lat}, ${item.location.lng}`);
+        const address = await getAddressFromCoordinates(item.location.lat, item.location.lng);
+        return {
+          ...item,
+          location: {
+            ...item.location,
+            address
+          }
+        };
+      }
+      return item;
+    }));
+    
+    setItems(updatedItems);
+    setGeocodingLoading(false);
+    console.log('Hoàn thành test geocoding!');
+  };
+
   // Hàm để mở modal chi tiết
   const openModal = (item) => {
     setSelectedItem(item);
@@ -220,6 +299,7 @@ export default function App() {
     setSelectedItem(null);
     setIsModalOpen(false);
   };
+
 
   // Hàm để đóng modal khi nhấn ESC
   useEffect(() => {
@@ -256,6 +336,7 @@ export default function App() {
       />
 
       <main className="main-content">
+
         <FilterSection 
           searchTerm={searchTerm}
           selectedLocation={selectedLocation}
