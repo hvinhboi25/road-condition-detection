@@ -8,11 +8,37 @@ class GeocodingService {
     // Giữ thuộc tính apiKey để tương thích với UI cũ
     this.apiKey = 'OSM_NOMINATIM';
     this.baseUrl = 'https://nominatim.openstreetmap.org/reverse';
-    this.cache = new Map(); // Cache để tránh gọi API nhiều lần cho cùng một tọa độ
     this.minIntervalMs = 1100; // giới hạn ~1 req/giây theo policy Nominatim
     this.lastRequestAt = 0;
     
-    console.log('Sử dụng OpenStreetMap Nominatim cho reverse geocoding');
+    // Load cache từ localStorage
+    this.cache = this.loadCacheFromStorage();
+    
+    console.log(`Sử dụng OpenStreetMap Nominatim cho reverse geocoding (đã load ${this.cache.size} địa chỉ từ cache)`);
+  }
+
+  // Load cache từ localStorage
+  loadCacheFromStorage() {
+    try {
+      const saved = localStorage.getItem('geocodingCache');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return new Map(Object.entries(parsed));
+      }
+    } catch (error) {
+      console.error('Lỗi khi load geocoding cache:', error);
+    }
+    return new Map();
+  }
+
+  // Lưu cache vào localStorage
+  saveCacheToStorage() {
+    try {
+      const cacheObj = Object.fromEntries(this.cache);
+      localStorage.setItem('geocodingCache', JSON.stringify(cacheObj));
+    } catch (error) {
+      console.error('Lỗi khi lưu geocoding cache:', error);
+    }
   }
 
   // Chuyển đổi tọa độ (lat, lng) thành địa chỉ
@@ -64,17 +90,20 @@ class GeocodingService {
         
         // Lưu vào cache
         this.cache.set(cacheKey, address);
+        this.saveCacheToStorage();
         
         return address;
       } else {
         const fallbackAddress = `Vị trí: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
         this.cache.set(cacheKey, fallbackAddress);
+        this.saveCacheToStorage();
         return fallbackAddress;
       }
     } catch (error) {
       console.error('Lỗi khi gọi OpenStreetMap Nominatim:', error);
       const fallbackAddress = `Vị trí: ${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       this.cache.set(cacheKey, fallbackAddress);
+      this.saveCacheToStorage();
       return fallbackAddress;
     }
   }
@@ -114,6 +143,11 @@ class GeocodingService {
   // Xóa cache
   clearCache() {
     this.cache.clear();
+    try {
+      localStorage.removeItem('geocodingCache');
+    } catch (error) {
+      console.error('Lỗi khi xóa geocoding cache:', error);
+    }
   }
 
   // Lấy số lượng items trong cache

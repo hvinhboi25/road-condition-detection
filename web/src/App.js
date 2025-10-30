@@ -21,7 +21,19 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLocation, setSelectedLocation] = useState("all");
   const [uniqueLocations, setUniqueLocations] = useState([]);
-  const [addressCache, setAddressCache] = useState(new Map());
+  const [addressCache, setAddressCache] = useState(() => {
+    // Load cache từ localStorage khi khởi tạo
+    try {
+      const saved = localStorage.getItem('addressCache');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return new Map(Object.entries(parsed));
+      }
+    } catch (error) {
+      console.error('Lỗi khi load address cache:', error);
+    }
+    return new Map();
+  });
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,6 +65,19 @@ export default function App() {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Lưu addressCache vào localStorage mỗi khi thay đổi
+  useEffect(() => {
+    try {
+      if (addressCache.size > 0) {
+        const cacheObj = Object.fromEntries(addressCache);
+        localStorage.setItem('addressCache', JSON.stringify(cacheObj));
+        console.log(`Đã lưu ${addressCache.size} địa chỉ vào cache`);
+      }
+    } catch (error) {
+      console.error('Lỗi khi lưu address cache:', error);
+    }
+  }, [addressCache]);
   
   // Debug log
   console.log('Current time:', currentTime);
