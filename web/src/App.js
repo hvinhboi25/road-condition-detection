@@ -66,17 +66,39 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Lưu addressCache vào localStorage mỗi khi thay đổi
+  // Lưu addressCache vào localStorage mỗi khi thay đổi (với debounce)
   useEffect(() => {
-    try {
-      if (addressCache.size > 0) {
-        const cacheObj = Object.fromEntries(addressCache);
-        localStorage.setItem('addressCache', JSON.stringify(cacheObj));
-        console.log(`Đã lưu ${addressCache.size} địa chỉ vào cache`);
+    const timeoutId = setTimeout(() => {
+      try {
+        if (addressCache.size > 0) {
+          // Giới hạn cache tối đa 1000 địa chỉ để tránh localStorage quá lớn
+          const MAX_CACHE_SIZE = 1000;
+          let cacheToSave = addressCache;
+          
+          if (addressCache.size > MAX_CACHE_SIZE) {
+            // Chỉ lưu 1000 địa chỉ gần nhất
+            const entries = Array.from(addressCache.entries());
+            cacheToSave = new Map(entries.slice(-MAX_CACHE_SIZE));
+            setAddressCache(cacheToSave);
+            console.log(`⚠️ Cache đã đạt giới hạn, chỉ giữ lại ${MAX_CACHE_SIZE} địa chỉ gần nhất`);
+          }
+          
+          const cacheObj = Object.fromEntries(cacheToSave);
+          localStorage.setItem('addressCache', JSON.stringify(cacheObj));
+          console.log(`💾 Đã lưu ${cacheToSave.size} địa chỉ vào cache`);
+        }
+      } catch (error) {
+        console.error('Lỗi khi lưu address cache:', error);
+        // Nếu localStorage đầy, xóa cache cũ
+        if (error.name === 'QuotaExceededError') {
+          console.warn('localStorage đầy, xóa cache...');
+          localStorage.removeItem('addressCache');
+          setAddressCache(new Map());
+        }
       }
-    } catch (error) {
-      console.error('Lỗi khi lưu address cache:', error);
-    }
+    }, 500); // Debounce 500ms để tránh lưu quá thường xuyên
+    
+    return () => clearTimeout(timeoutId);
   }, [addressCache]);
   
   // Debug log
@@ -95,10 +117,12 @@ export default function App() {
       return 'Tọa độ không hợp lệ';
     }
     
-    const cacheKey = `${latNum.toFixed(6)},${lngNum.toFixed(6)}`;
+    // Sử dụng độ chính xác 4 chữ số (≈10m) để tối ưu cache
+    const cacheKey = `${latNum.toFixed(4)},${lngNum.toFixed(4)}`;
     
     // Kiểm tra cache trước
     if (addressCache.has(cacheKey)) {
+      console.log(`✓ Cache hit: ${cacheKey}`);
       return addressCache.get(cacheKey);
     }
     

@@ -34,10 +34,27 @@ class GeocodingService {
   // Lưu cache vào localStorage
   saveCacheToStorage() {
     try {
-      const cacheObj = Object.fromEntries(this.cache);
+      // Giới hạn cache tối đa 1000 địa chỉ
+      const MAX_CACHE_SIZE = 1000;
+      let cacheToSave = this.cache;
+      
+      if (this.cache.size > MAX_CACHE_SIZE) {
+        const entries = Array.from(this.cache.entries());
+        cacheToSave = new Map(entries.slice(-MAX_CACHE_SIZE));
+        this.cache = cacheToSave;
+        console.log(`⚠️ Geocoding cache đã đạt giới hạn, chỉ giữ lại ${MAX_CACHE_SIZE} địa chỉ gần nhất`);
+      }
+      
+      const cacheObj = Object.fromEntries(cacheToSave);
       localStorage.setItem('geocodingCache', JSON.stringify(cacheObj));
     } catch (error) {
       console.error('Lỗi khi lưu geocoding cache:', error);
+      // Nếu localStorage đầy, xóa cache
+      if (error.name === 'QuotaExceededError') {
+        console.warn('localStorage đầy, xóa geocoding cache...');
+        localStorage.removeItem('geocodingCache');
+        this.cache.clear();
+      }
     }
   }
 
@@ -47,11 +64,12 @@ class GeocodingService {
       return 'Tọa độ không hợp lệ';
     }
 
-    // Tạo key cho cache
-    const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
+    // Tạo key cho cache với độ chính xác 4 chữ số (≈10m) để tối ưu cache
+    const cacheKey = `${lat.toFixed(4)},${lng.toFixed(4)}`;
     
     // Kiểm tra cache trước
     if (this.cache.has(cacheKey)) {
+      console.log(`✓ Geocoding cache hit: ${cacheKey}`);
       return this.cache.get(cacheKey);
     }
 
