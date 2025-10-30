@@ -185,13 +185,13 @@ export default function App() {
   const getConditionIcon = (condition) => {
     switch (condition?.toLowerCase()) {
       case 'good':
-        return '🟢';
+        return '●';
       case 'fair':
-        return '🟡';
+        return '●';
       case 'poor':
-        return '🔴';
+        return '●';
       default:
-        return '⚪';
+        return '○';
     }
   };
 
@@ -249,10 +249,10 @@ export default function App() {
       const testLat = 21.0285;
       const testLng = 105.8542;
       const address = await geocodingService.reverseGeocode(testLat, testLng);
-      alert(`✅ Nominatim hoạt động!\n\nĐịa chỉ: ${address || 'Không có địa chỉ'}`);
+      alert(`Nominatim hoạt động!\n\nĐịa chỉ: ${address || 'Không có địa chỉ'}`);
     } catch (error) {
       console.error('Lỗi khi test Nominatim:', error);
-      alert(`❌ Lỗi khi test Nominatim:\n\n${error.message}`);
+      alert(`Lỗi khi test Nominatim:\n\n${error.message}`);
     } finally {
       setGeocodingLoading(false);
     }

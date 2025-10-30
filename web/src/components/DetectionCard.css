@@ -1,14 +1,16 @@
 /* Detection Card */
 .detection-card {
   background: white;
-  border-radius: 8px;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  border: 1px solid #ddd;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  border: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .detection-card:hover {
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+  transform: translateY(-4px);
 }
 
 .card-header {
@@ -50,6 +52,7 @@
   margin: 0 1.25rem;
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .detection-image {
@@ -57,18 +60,25 @@
   height: 200px;
   object-fit: cover;
   display: block;
+  transition: transform 0.3s ease;
+}
+
+.detection-card:hover .detection-image {
+  transform: scale(1.05);
 }
 
 .image-overlay {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
   color: white;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
+  padding: 0.4rem 0.85rem;
+  border-radius: 20px;
   font-size: 0.75rem;
-  font-weight: 500;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Card Content */
@@ -81,9 +91,10 @@
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: #f8fafc;
-  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  border-radius: 10px;
+  border-left: 3px solid #667eea;
 }
 
 .location-icon {
@@ -140,17 +151,20 @@
 }
 
 .view-video-button {
-  background: #111827;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #fff;
-  padding: 6px 10px;
-  border-radius: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
   text-decoration: none;
   font-size: 12px;
   font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
 .view-video-button:hover {
-  background: #1f2937;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 /* Responsive Detection Card */

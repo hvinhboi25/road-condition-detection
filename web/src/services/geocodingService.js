@@ -12,7 +12,7 @@ class GeocodingService {
     this.minIntervalMs = 1100; // giới hạn ~1 req/giây theo policy Nominatim
     this.lastRequestAt = 0;
     
-    console.log('✅ Sử dụng OpenStreetMap Nominatim cho reverse geocoding');
+    console.log('Sử dụng OpenStreetMap Nominatim cho reverse geocoding');
   }
 
   // Chuyển đổi tọa độ (lat, lng) thành địa chỉ

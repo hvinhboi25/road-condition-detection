@@ -24,7 +24,6 @@ const Header = ({
         {/* Hiển thị thời gian thực */}
         <div className="realtime-info">
           <div className="realtime-clock">
-            <span className="clock-icon">🕐</span>
             <span className="current-time">
               {lastUpdateTime 
                 ? lastUpdateTime.toLocaleTimeString('vi-VN', { hour12: false })
@@ -74,18 +73,6 @@ const Header = ({
           <div className="stat-item">
             <span className="stat-number">{filteredItems.length}</span>
             <span className="stat-label">Filtered Detections</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">
-              {filteredItems.filter(item => item.detections?.some(d => d.class?.toLowerCase() === 'good')).length}
-            </span>
-            <span className="stat-label">Good Conditions</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-number">
-              {filteredItems.filter(item => item.detections?.some(d => d.class?.toLowerCase() === 'poor')).length}
-            </span>
-            <span className="stat-label">Poor Conditions</span>
           </div>
           <div className="stat-item">
             <span className="stat-number">{uniqueLocations.length}</span>

@@ -1,9 +1,10 @@
 /* Header Styles */
 .header {
-  background: white;
-  border-bottom: 2px solid #ddd;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: none;
   padding: 20px 0;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
 .header-content {
@@ -15,10 +16,14 @@
 
 .title {
   font-size: 28px;
-  font-weight: bold;
-  color: #333;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 10px;
   text-align: center;
+  letter-spacing: -0.5px;
 }
 
 .title-icon {
@@ -41,19 +46,27 @@
   flex-wrap: wrap;
   margin-bottom: 20px;
   padding: 15px;
-  background: #f8f9fa;
-  border-radius: 8px;
-  border: 1px solid #dee2e6;
+  background: rgba(248, 249, 250, 0.6);
+  border-radius: 12px;
+  border: 1px solid rgba(222, 226, 230, 0.5);
+  backdrop-filter: blur(5px);
 }
 
 .realtime-clock {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 8px 16px;
   background: white;
-  border-radius: 4px;
-  border: 1px solid #ccc;
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.realtime-clock:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .clock-icon {
@@ -180,18 +193,28 @@
 
 .stat-item {
   text-align: center;
-  padding: 15px;
+  padding: 15px 20px;
   background: white;
-  border-radius: 6px;
-  border: 1px solid #ddd;
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   min-width: 100px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 .stat-number {
   display: block;
   font-size: 24px;
-  font-weight: bold;
-  color: #007bff;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 5px;
 }
 

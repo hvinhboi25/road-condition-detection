@@ -70,7 +70,7 @@ const DetectionCard = ({ item, onCardClick, getConditionIcon, getConditionColor,
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
             >
-              🎬 Xem video
+              Xem video
             </a>
           )}
         </div>
