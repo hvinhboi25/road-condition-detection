@@ -42,7 +42,7 @@ class GeocodingService {
         const entries = Array.from(this.cache.entries());
         cacheToSave = new Map(entries.slice(-MAX_CACHE_SIZE));
         this.cache = cacheToSave;
-        console.log(`⚠️ Geocoding cache đã đạt giới hạn, chỉ giữ lại ${MAX_CACHE_SIZE} địa chỉ gần nhất`);
+        console.log(`Geocoding cache đã đạt giới hạn, chỉ giữ lại ${MAX_CACHE_SIZE} địa chỉ gần nhất`);
       }
       
       const cacheObj = Object.fromEntries(cacheToSave);
@@ -69,7 +69,7 @@ class GeocodingService {
     
     // Kiểm tra cache trước
     if (this.cache.has(cacheKey)) {
-      console.log(`✓ Geocoding cache hit: ${cacheKey}`);
+      console.log(`Geocoding cache hit: ${cacheKey}`);
       return this.cache.get(cacheKey);
     }
 

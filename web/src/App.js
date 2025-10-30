@@ -80,12 +80,12 @@ export default function App() {
             const entries = Array.from(addressCache.entries());
             cacheToSave = new Map(entries.slice(-MAX_CACHE_SIZE));
             setAddressCache(cacheToSave);
-            console.log(`⚠️ Cache đã đạt giới hạn, chỉ giữ lại ${MAX_CACHE_SIZE} địa chỉ gần nhất`);
+            console.log(`Cache đã đạt giới hạn, chỉ giữ lại ${MAX_CACHE_SIZE} địa chỉ gần nhất`);
           }
           
           const cacheObj = Object.fromEntries(cacheToSave);
           localStorage.setItem('addressCache', JSON.stringify(cacheObj));
-          console.log(`💾 Đã lưu ${cacheToSave.size} địa chỉ vào cache`);
+          console.log(`Đã lưu ${cacheToSave.size} địa chỉ vào cache`);
         }
       } catch (error) {
         console.error('Lỗi khi lưu address cache:', error);
@@ -122,7 +122,7 @@ export default function App() {
     
     // Kiểm tra cache trước
     if (addressCache.has(cacheKey)) {
-      console.log(`✓ Cache hit: ${cacheKey}`);
+      console.log(`Cache hit: ${cacheKey}`);
       return addressCache.get(cacheKey);
     }
     

@@ -25,28 +25,17 @@ const Header = ({
         <div className="realtime-info">
           <div className="realtime-clock">
             <span className="current-time">
-              {lastUpdateTime 
-                ? lastUpdateTime.toLocaleTimeString('vi-VN', { hour12: false })
-                : currentTime.toLocaleTimeString('vi-VN', { hour12: false })
-              }
+              {currentTime.toLocaleTimeString('vi-VN', { hour12: false })}
             </span>
           </div>
           <div className="realtime-date">
             <span className="date-text">
-              {lastUpdateTime 
-                ? lastUpdateTime.toLocaleDateString('vi-VN', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric', 
-                    weekday: 'long' 
-                  })
-                : currentTime.toLocaleDateString('vi-VN', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric', 
-                    weekday: 'long' 
-                  })
-              }
+              {currentTime.toLocaleDateString('vi-VN', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                weekday: 'long' 
+              })}
             </span>
           </div>
           {geocodingLoading && (
