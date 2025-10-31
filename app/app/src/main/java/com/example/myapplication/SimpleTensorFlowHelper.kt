@@ -120,7 +120,11 @@ class SimpleTensorFlowHelper(private val context: Context) {
                         val h = output[baseIndex + 3]
                         val confidence = output[baseIndex + 4]
 
-                        Log.d("SimpleTensorFlow", "Detection $i: x=$x, y=$y, w=$w, h=$h, conf=$confidence")
+                        Log.d("SimpleTensorFlow", ">>> Detection $i")
+                        Log.d("SimpleTensorFlow", "  Raw values: [$x, $y, $w, $h, $confidence]")
+                        Log.d("SimpleTensorFlow", "  x=$x, y=$y, w=$w, h=$h")
+                        Log.d("SimpleTensorFlow", "  confidence=$confidence")
+                        Log.d("SimpleTensorFlow", "  Threshold check: ${confidence > 0.3f}")
 
                         if (confidence > 0.3f) {
                             detections.add(
@@ -133,6 +137,7 @@ class SimpleTensorFlowHelper(private val context: Context) {
                                     className = "Ổ gà"
                                 )
                             )
+                            Log.d("SimpleTensorFlow", "  ✓ Added to detections list")
                         }
                     }
                 }

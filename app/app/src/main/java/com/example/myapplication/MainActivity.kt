@@ -739,7 +739,7 @@ fun DeepLearningApp(modifier: Modifier = Modifier) {
                                         color = Color(0xFF5E6C84)
                                     )
                                     Text(
-                                        text = "Kích thước: ${String.format("%.0f", detection.width)} x ${String.format("%.0f", detection.height)}",
+                                        text = "Vị trí: ${String.format("%.1f", detection.x * 100)}%, ${String.format("%.1f", detection.y * 100)}%",
                                         fontSize = 12.sp,
                                         color = Color(0xFF5E6C84)
                                     )
