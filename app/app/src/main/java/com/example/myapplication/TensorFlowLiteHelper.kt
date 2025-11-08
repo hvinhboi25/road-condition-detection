@@ -14,7 +14,7 @@ import java.nio.ByteOrder
 class TensorFlowLiteHelper(private val context: Context) {
     
     private var interpreter: Interpreter? = null
-    private val modelPath = "best_float16.tflite"
+    private val modelPath = "best_float32_train2.tflite"
     
     // Model input/output specifications (adjust based on your model)
     private val inputSize = 640 // YOLO models typically use 640x640
