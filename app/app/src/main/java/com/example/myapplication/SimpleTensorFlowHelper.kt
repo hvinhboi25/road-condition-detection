@@ -11,8 +11,14 @@ import java.nio.ByteOrder
 class SimpleTensorFlowHelper(private val context: Context) {
 
     private var interpreter: Interpreter? = null
-    private val modelPath = "best_float32.tflite"
+    private val modelPath = "best_float16_train2.tflite"
     private val inputSize = 640
+    
+    // Pre-allocate buffers to avoid creating new ones every prediction
+    private val inputBuffer = ByteBuffer.allocateDirect(4 * inputSize * inputSize * 3).apply {
+        order(ByteOrder.nativeOrder())
+    }
+    private val pixels = IntArray(inputSize * inputSize)
 
     init {
         loadModel()
@@ -36,61 +42,39 @@ class SimpleTensorFlowHelper(private val context: Context) {
         val interpreter = this.interpreter ?: return emptyList()
 
         try {
-            Log.d("SimpleTensorFlow", "Starting prediction...")
-
-            // Resize bitmap to input size
-            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, true)
-
-            // Prepare input buffer
-            val inputBuffer = ByteBuffer.allocateDirect(4 * inputSize * inputSize * 3)
-            inputBuffer.order(ByteOrder.nativeOrder())
-
-            // Convert bitmap to float array
-            val pixels = IntArray(inputSize * inputSize)
+            // Reuse resized bitmap if possible, or use fast scaling
+            val resizedBitmap = Bitmap.createScaledBitmap(bitmap, inputSize, inputSize, false)
+            
+            // Reuse pre-allocated buffer
+            inputBuffer.rewind()
             resizedBitmap.getPixels(pixels, 0, inputSize, 0, 0, inputSize, inputSize)
 
+            // Optimized pixel processing - single pass
             for (pixel in pixels) {
-                val r = (pixel shr 16) and 0xFF
-                val g = (pixel shr 8) and 0xFF
-                val b = pixel and 0xFF
-
-                inputBuffer.putFloat(r / 255.0f)
-                inputBuffer.putFloat(g / 255.0f)
-                inputBuffer.putFloat(b / 255.0f)
+                inputBuffer.putFloat(((pixel shr 16) and 0xFF) * 0.00392157f) // /255.0f
+                inputBuffer.putFloat(((pixel shr 8) and 0xFF) * 0.00392157f)
+                inputBuffer.putFloat((pixel and 0xFF) * 0.00392157f)
             }
 
-            // Get model input and output info
-            val inputTensor = interpreter.getInputTensor(0)
             val outputTensor = interpreter.getOutputTensor(0)
-
-            Log.d("SimpleTensorFlow", "Input shape: ${inputTensor.shape().contentToString()}")
-            Log.d("SimpleTensorFlow", "Output shape: ${outputTensor.shape().contentToString()}")
-
-            // Prepare output buffer based on actual model output shape
             val outputShape = outputTensor.shape()
             val outputSize = outputShape.fold(1) { acc, dim -> acc * dim }
-            val outputBuffer = ByteBuffer.allocateDirect(4 * outputSize)
-            outputBuffer.order(ByteOrder.nativeOrder())
-
-            // Run inference
-            interpreter.run(inputBuffer, outputBuffer)
-
-            // Convert output to float array
-            outputBuffer.rewind()
-            val outputArray = FloatArray(outputSize)
-            for (i in 0 until outputSize) {
-                outputArray[i] = outputBuffer.float
+            val outputBuffer = ByteBuffer.allocateDirect(4 * outputSize).apply {
+                order(ByteOrder.nativeOrder())
             }
 
-            Log.d("SimpleTensorFlow", "Output array size: $outputSize")
-            Log.d("SimpleTensorFlow", "First 10 output values: ${outputArray.take(10).joinToString()}")
+            inputBuffer.rewind()
+            interpreter.run(inputBuffer, outputBuffer)
 
-            // Try to parse as different formats
+            // More efficient array conversion
+            outputBuffer.rewind()
+            val outputArray = FloatArray(outputSize)
+            outputBuffer.asFloatBuffer().get(outputArray)
+
             return parseOutput(outputArray, outputShape)
 
         } catch (e: Exception) {
             Log.e("SimpleTensorFlow", "Prediction failed: ${e.message}")
-            e.printStackTrace()
             return emptyList()
         }
     }
@@ -98,46 +82,26 @@ class SimpleTensorFlowHelper(private val context: Context) {
     private fun parseOutput(output: FloatArray, shape: IntArray): List<Detection> {
         val detections = mutableListOf<Detection>()
 
-        Log.d("SimpleTensorFlow", "Parsing output with shape: ${shape.contentToString()}")
-
-        // YOLO output format: [batch, detections, 6] where 6 = [x, y, w, h, confidence, class_id]
-        // or [batch, detections, 5] where 5 = [x, y, w, h, confidence] for single class
-
         when (shape.size) {
             3 -> {
-                val batchSize = shape[0]
                 val numDetections = shape[1]
                 val numFeatures = shape[2]
-
-                Log.d("SimpleTensorFlow", "3D output: batch=$batchSize, detections=$numDetections, features=$numFeatures")
 
                 for (i in 0 until numDetections) {
                     val baseIndex = i * numFeatures
                     if (baseIndex + 4 < output.size) {
-                        val x = output[baseIndex]
-                        val y = output[baseIndex + 1]
-                        val w = output[baseIndex + 2]
-                        val h = output[baseIndex + 3]
                         val confidence = output[baseIndex + 4]
-
-                        Log.d("SimpleTensorFlow", ">>> Detection $i")
-                        Log.d("SimpleTensorFlow", "  Raw values: [$x, $y, $w, $h, $confidence]")
-                        Log.d("SimpleTensorFlow", "  x=$x, y=$y, w=$w, h=$h")
-                        Log.d("SimpleTensorFlow", "  confidence=$confidence")
-                        Log.d("SimpleTensorFlow", "  Threshold check: ${confidence > 0.3f}")
-
                         if (confidence > 0.3f) {
                             detections.add(
                                 Detection(
-                                    x = x,
-                                    y = y,
-                                    width = w,
-                                    height = h,
+                                    x = output[baseIndex],
+                                    y = output[baseIndex + 1],
+                                    width = output[baseIndex + 2],
+                                    height = output[baseIndex + 3],
                                     confidence = confidence,
                                     className = "Ổ gà"
                                 )
                             )
-                            Log.d("SimpleTensorFlow", "  ✓ Added to detections list")
                         }
                     }
                 }
@@ -146,24 +110,17 @@ class SimpleTensorFlowHelper(private val context: Context) {
                 val numDetections = shape[0]
                 val numFeatures = shape[1]
 
-                Log.d("SimpleTensorFlow", "2D output: detections=$numDetections, features=$numFeatures")
-
                 for (i in 0 until numDetections) {
                     val baseIndex = i * numFeatures
                     if (baseIndex + 4 < output.size) {
-                        val x = output[baseIndex]
-                        val y = output[baseIndex + 1]
-                        val w = output[baseIndex + 2]
-                        val h = output[baseIndex + 3]
                         val confidence = output[baseIndex + 4]
-
                         if (confidence > 0.3f) {
                             detections.add(
                                 Detection(
-                                    x = x,
-                                    y = y,
-                                    width = w,
-                                    height = h,
+                                    x = output[baseIndex],
+                                    y = output[baseIndex + 1],
+                                    width = output[baseIndex + 2],
+                                    height = output[baseIndex + 3],
                                     confidence = confidence,
                                     className = "Ổ gà"
                                 )
@@ -173,24 +130,17 @@ class SimpleTensorFlowHelper(private val context: Context) {
                 }
             }
             else -> {
-                Log.d("SimpleTensorFlow", "Unknown output shape, trying flat parsing")
-                // Try to parse as flat array
-                val numFeatures = 5 // Assume 5 features: x, y, w, h, confidence
+                val numFeatures = 5
                 for (i in 0 until output.size step numFeatures) {
                     if (i + 4 < output.size) {
-                        val x = output[i]
-                        val y = output[i + 1]
-                        val w = output[i + 2]
-                        val h = output[i + 3]
                         val confidence = output[i + 4]
-
                         if (confidence > 0.3f) {
                             detections.add(
                                 Detection(
-                                    x = x,
-                                    y = y,
-                                    width = w,
-                                    height = h,
+                                    x = output[i],
+                                    y = output[i + 1],
+                                    width = output[i + 2],
+                                    height = output[i + 3],
                                     confidence = confidence,
                                     className = "Ổ gà"
                                 )
@@ -201,13 +151,22 @@ class SimpleTensorFlowHelper(private val context: Context) {
             }
         }
 
-        Log.d("SimpleTensorFlow", "Found ${detections.size} detections")
         return detections
     }
 
 
     fun close() {
         interpreter?.close()
+        interpreter = null
     }
 }
+
+data class Detection(
+    val x: Float,
+    val y: Float,
+    val width: Float,
+    val height: Float,
+    val confidence: Float,
+    val className: String
+)
 

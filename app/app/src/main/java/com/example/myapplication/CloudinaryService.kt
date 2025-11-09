@@ -29,9 +29,8 @@ class CloudinaryService(private val context: Context) {
                 "api_secret" to API_SECRET
             )
             MediaManager.init(context, config)
-            Log.d("CloudinaryService", "✅ Cloudinary initialized successfully")
         } catch (e: Exception) {
-            Log.e("CloudinaryService", "❌ Failed to initialize Cloudinary", e)
+            Log.e("CloudinaryService", "Failed to initialize Cloudinary: ${e.message}")
         }
     }
     
@@ -41,62 +40,39 @@ class CloudinaryService(private val context: Context) {
         onSuccess: (String) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        Log.d("CloudinaryService", "🔄 === STARTING CLOUDINARY UPLOAD ===")
-        
         try {
-            // Convert bitmap to byte array
             val byteArrayOutputStream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 80, byteArrayOutputStream)
             val imageData = byteArrayOutputStream.toByteArray()
             
-            // Generate unique filename
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
             val filename = "detection_${timestamp}_${System.currentTimeMillis()}.jpg"
             
-            Log.d("CloudinaryService", "📤 Uploading image: $filename")
-            Log.d("CloudinaryService", "📊 Image size: ${imageData.size} bytes")
-            Log.d("CloudinaryService", "🎯 Detections count: ${detections.size}")
-            
-            // Upload to Cloudinary (simplified)
             MediaManager.get().upload(imageData)
                 .option("public_id", filename)
                 .option("folder", "road_detection")
                 .callback(object : UploadCallback {
-                    override fun onStart(requestId: String) {
-                        Log.d("CloudinaryService", "🚀 Upload started with ID: $requestId")
-                    }
-                    
-                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
-                        val progress = (bytes * 100 / totalBytes).toInt()
-                        Log.d("CloudinaryService", "📈 Upload progress: $progress% ($bytes/$totalBytes bytes)")
-                    }
+                    override fun onStart(requestId: String) {}
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {}
                     
                     override fun onSuccess(requestId: String, resultData: Map<*, *>?) {
                         val imageUrl = resultData?.get("secure_url") as? String
                         if (imageUrl != null) {
-                            Log.d("CloudinaryService", "✅ Image uploaded successfully!")
-                            Log.d("CloudinaryService", "🔗 Image URL: $imageUrl")
                             onSuccess(imageUrl)
                         } else {
-                            Log.e("CloudinaryService", "❌ No URL returned from Cloudinary")
                             onFailure(Exception("No URL returned from Cloudinary"))
                         }
                     }
                     
                     override fun onError(requestId: String, error: ErrorInfo) {
-                        val errorMsg = "Upload failed: ${error.description}"
-                        Log.e("CloudinaryService", "❌ $errorMsg")
-                        onFailure(Exception(errorMsg))
+                        onFailure(Exception("Upload failed: ${error.description}"))
                     }
                     
-                    override fun onReschedule(requestId: String, error: ErrorInfo) {
-                        Log.w("CloudinaryService", "🔄 Upload rescheduled: ${error.description}")
-                    }
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {}
                 })
                 .dispatch()
                 
         } catch (e: Exception) {
-            Log.e("CloudinaryService", "❌ Upload failed with exception", e)
             onFailure(e)
         }
     }
@@ -106,46 +82,31 @@ class CloudinaryService(private val context: Context) {
         onSuccess: (String) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        Log.d("CloudinaryService", "🔄 === STARTING CLOUDINARY VIDEO UPLOAD ===")
         try {
             MediaManager.get().upload(uri)
                 .option("resource_type", "video")
                 .option("folder", "road_detection/videos")
                 .callback(object : UploadCallback {
-                    override fun onStart(requestId: String) {
-                        Log.d("CloudinaryService", "🚀 Video upload started with ID: $requestId")
-                    }
-
-                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
-                        val progress = if (totalBytes > 0) (bytes * 100 / totalBytes).toInt() else 0
-                        Log.d("CloudinaryService", "📈 Video upload progress: $progress% ($bytes/$totalBytes bytes)")
-                    }
+                    override fun onStart(requestId: String) {}
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {}
 
                     override fun onSuccess(requestId: String, resultData: Map<*, *>?) {
                         val videoUrl = resultData?.get("secure_url") as? String
                         if (videoUrl != null) {
-                            Log.d("CloudinaryService", "✅ Video uploaded successfully!")
-                            Log.d("CloudinaryService", "🔗 Video URL: $videoUrl")
                             onSuccess(videoUrl)
                         } else {
-                            Log.e("CloudinaryService", "❌ No video URL returned from Cloudinary")
-                            onFailure(Exception("No video URL returned from Cloudinary"))
+                            onFailure(Exception("No video URL returned"))
                         }
                     }
 
                     override fun onError(requestId: String, error: ErrorInfo) {
-                        val errorMsg = "Video upload failed: ${error.description}"
-                        Log.e("CloudinaryService", "❌ $errorMsg")
-                        onFailure(Exception(errorMsg))
+                        onFailure(Exception("Video upload failed: ${error.description}"))
                     }
 
-                    override fun onReschedule(requestId: String, error: ErrorInfo) {
-                        Log.w("CloudinaryService", "🔄 Video upload rescheduled: ${error.description}")
-                    }
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {}
                 })
                 .dispatch()
         } catch (e: Exception) {
-            Log.e("CloudinaryService", "❌ Video upload failed with exception", e)
             onFailure(e)
         }
     }
@@ -155,7 +116,6 @@ class CloudinaryService(private val context: Context) {
         onSuccess: (String) -> Unit,
         onFailure: (Exception) -> Unit
     ) {
-        Log.d("CloudinaryService", "🔄 === STARTING CLOUDINARY VIDEO FILE UPLOAD ===")
         try {
             MediaManager.get().upload(filePath)
                 .option("resource_type", "video")
