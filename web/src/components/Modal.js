@@ -141,6 +141,31 @@ const Modal = ({ isOpen, item, onClose, formatTimestamp }) => {
 
           {/* Thông tin chi tiết */}
           <div className="modal-details">
+            {/* User Info Section */}
+            {item.userName && (
+              <div className="detail-section">
+                <h3>Người cung cấp</h3>
+                <div className="modal-user-info">
+                  <div className="modal-user-avatar">👤</div>
+                  <div className="modal-user-text">
+                    <p className="detail-item">
+                      <strong>Tên:</strong> {item.userName}
+                    </p>
+                    {item.userEmail && (
+                      <p className="detail-item">
+                        <strong>Email:</strong> {item.userEmail}
+                      </p>
+                    )}
+                    {item.source && (
+                      <p className="detail-item">
+                        <strong>Nguồn:</strong> {item.source === 'android' ? '📱 Android' : '🌐 Web'}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="detail-section">
               <h3>Thông tin vị trí</h3>
               <p className="detail-item">

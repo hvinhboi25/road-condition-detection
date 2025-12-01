@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
-import { db } from "./firebase";
+import { db, auth } from "./firebase";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRealTime } from "./hooks/useRealTime";
 import geocodingService from "./services/geocodingService";
 
@@ -11,11 +12,16 @@ import DetectionCard from "./components/DetectionCard";
 import Modal from "./components/Modal";
 import LoadingState from "./components/LoadingState";
 import EmptyState from "./components/EmptyState";
+import Login from "./components/Login";
+import Register from "./components/Register";
 
 // Styles
 import "./styles/global.css";
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [showRegister, setShowRegister] = useState(false);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -37,6 +43,25 @@ export default function App() {
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Auth state listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Logout function
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Lỗi đăng xuất:', error);
+    }
+  };
+
   // Chuẩn hóa tọa độ từ nhiều cấu trúc dữ liệu khác nhau
   const normalizeCoords = useCallback((raw) => {
     if (!raw) return { lat: 0, lng: 0 };
@@ -369,6 +394,23 @@ export default function App() {
     };
   }, [isModalOpen]);
 
+  // Show auth loading screen
+  if (authLoading) {
+    return (
+      <div className="app">
+        <LoadingState geocodingLoading={false} />
+      </div>
+    );
+  }
+
+  // Show login/register if not authenticated
+  if (!user) {
+    if (showRegister) {
+      return <Register onSwitchToLogin={() => setShowRegister(false)} />;
+    }
+    return <Login onSwitchToRegister={() => setShowRegister(true)} />;
+  }
+
   return (
     <div className="app">
       <Header 
@@ -382,6 +424,8 @@ export default function App() {
         filteredItems={filteredItems}
         items={items}
         uniqueLocations={uniqueLocations}
+        user={user}
+        onLogout={handleLogout}
       />
 
       <main className="main-content">

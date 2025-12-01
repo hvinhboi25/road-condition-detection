@@ -2,6 +2,7 @@ package com.example.myapplication
 
 import android.content.Context
 import android.util.Log
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import java.text.SimpleDateFormat
 import java.util.*
@@ -9,6 +10,7 @@ import java.util.*
 class FirebaseService(private val context: Context) {
     
     private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
     
     fun saveDetectionToFirestore(
         imageUrl: String,
@@ -17,6 +19,8 @@ class FirebaseService(private val context: Context) {
         videoUrl: String? = null,
         videoDetections: List<Map<String, Any>>? = null
     ) {
+        val currentUser = auth.currentUser
+        
         val detectionData = hashMapOf(
             "imageUrl" to imageUrl,
             "videoUrl" to videoUrl,
@@ -43,7 +47,12 @@ class FirebaseService(private val context: Context) {
                     "accuracy" to locationData.accuracy,
                     "timestamp" to locationData.timestamp
                 )
-            } else null
+            } else null,
+            // Thêm thông tin user
+            "userId" to (currentUser?.uid ?: "anonymous"),
+            "userName" to (currentUser?.displayName ?: currentUser?.email ?: "Anonymous"),
+            "userEmail" to (currentUser?.email ?: ""),
+            "source" to "android"
         )
 
         db.collection("detections")

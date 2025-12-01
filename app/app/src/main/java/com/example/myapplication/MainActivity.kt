@@ -1,6 +1,7 @@
 package com.example.myapplication
 
 import android.Manifest
+import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
@@ -34,30 +35,51 @@ import com.example.myapplication.ui.theme.MyApplicationTheme
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.*
 import java.io.IOException
 
 class MainActivity : ComponentActivity() {
+    private val auth: FirebaseAuth by lazy { FirebaseAuth.getInstance() }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Kiểm tra authentication
+        if (auth.currentUser == null) {
+            navigateToLogin()
+            return
+        }
+        
         enableEdgeToEdge()
         setContent {
             MyApplicationTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DeepLearningApp(
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier.padding(innerPadding),
+                        onLogout = { 
+                            auth.signOut()
+                            navigateToLogin()
+                        }
                     )
                 }
             }
         }
+    }
+    
+    private fun navigateToLogin() {
+        startActivity(Intent(this, LoginActivity::class.java))
+        finish()
     }
 }
 
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
-fun DeepLearningApp(modifier: Modifier = Modifier) {
+fun DeepLearningApp(modifier: Modifier = Modifier, onLogout: () -> Unit) {
     val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val currentUser = auth.currentUser
     var selectedImage by remember { mutableStateOf<Bitmap?>(null) }
     var resultImage by remember { mutableStateOf<Bitmap?>(null) }
     var predictions by remember { mutableStateOf<List<Detection>>(emptyList()) }
@@ -66,6 +88,7 @@ fun DeepLearningApp(modifier: Modifier = Modifier) {
     val firebaseService = remember { FirebaseService(context) }
     val cloudinaryService = remember { CloudinaryService(context) }
     val locationService = remember { LocationService(context) }
+    
     // Helper to upload detections (optimized version)
     fun uploadDetections(imageWithBoxes: Bitmap, results: List<Detection>, isLocationPermissionGranted: Boolean, originalVideoUri: Uri? = null, videoDetections: List<Map<String, Any>>? = null) {
         if (results.isEmpty()) return
@@ -239,23 +262,66 @@ fun DeepLearningApp(modifier: Modifier = Modifier) {
             shape = RoundedCornerShape(16.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.padding(24.dp)
             ) {
-                Text(
-                    text = "Phát hiện Ổ gà",
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF2E3440),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Ứng dụng AI phát hiện ổ gà thông minh",
-                    fontSize = 14.sp,
-                    color = Color(0xFF5E6C84),
-                    textAlign = TextAlign.Center
-                )
+                // User info and logout button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "👤 ${currentUser?.displayName ?: "User"}",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFF2E3440)
+                        )
+                        Text(
+                            text = currentUser?.email ?: "",
+                            fontSize = 12.sp,
+                            color = Color(0xFF5E6C84)
+                        )
+                    }
+                    
+                    Button(
+                        onClick = onLogout,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFEF4444)
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text(
+                            text = "Đăng xuất",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                
+                // Title
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Phát hiện Ổ gà",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF2E3440),
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Ứng dụng AI phát hiện ổ gà thông minh",
+                        fontSize = 14.sp,
+                        color = Color(0xFF5E6C84),
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
         

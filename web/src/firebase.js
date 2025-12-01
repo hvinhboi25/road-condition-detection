@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // Cấu hình Firebase của bạn
 const firebaseConfig = {
@@ -16,3 +17,6 @@ const app = initializeApp(firebaseConfig);
 
 // Kết nối Firestore
 export const db = getFirestore(app);
+
+// Kết nối Authentication
+export const auth = getAuth(app);

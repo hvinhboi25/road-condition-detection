@@ -29,6 +29,19 @@ const DetectionCard = ({ item, onCardClick, getConditionIcon, getConditionColor,
       </div>
 
       <div className="card-content">
+        {/* User info */}
+        {item.userName && (
+          <div className="user-info-card">
+            <span className="user-icon">👤</span>
+            <div className="user-details-card">
+              <span className="user-name-card">{item.userName}</span>
+              {item.source && (
+                <span className="user-source">từ {item.source === 'android' ? '📱 Android' : '🌐 Web'}</span>
+              )}
+            </div>
+          </div>
+        )}
+        
         <div className="location">
           <span className="location-icon">📍</span>
           <span className="location-text">

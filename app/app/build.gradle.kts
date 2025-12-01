@@ -79,6 +79,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:34.3.0"))
     // Firebase Firestore
     implementation("com.google.firebase:firebase-firestore")
+    // Firebase Authentication
+    implementation("com.google.firebase:firebase-auth")
     // Cloudinary for image upload
     implementation("com.cloudinary:cloudinary-android:2.3.1")
     // Firebase Analytics

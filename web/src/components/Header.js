@@ -11,15 +11,34 @@ const Header = ({
   geocodingLoading,
   filteredItems,
   items,
-  uniqueLocations 
+  uniqueLocations,
+  user,
+  onLogout
 }) => {
   return (
     <header className="header">
       <div className="header-content">
-        <h1 className="title">
-        
-          Road Condition Dashboard
-        </h1>
+        <div className="header-top">
+          <h1 className="title">
+            Road Condition Dashboard
+          </h1>
+          
+          {/* User info and logout */}
+          {user && (
+            <div className="user-section">
+              <div className="user-info">
+                <span className="user-icon">👤</span>
+                <div className="user-details">
+                  <span className="user-name">{user.displayName || 'User'}</span>
+                  <span className="user-email">{user.email}</span>
+                </div>
+              </div>
+              <button onClick={onLogout} className="logout-button">
+                Đăng xuất
+              </button>
+            </div>
+          )}
+        </div>
         
         {/* Hiển thị thời gian thực */}
         <div className="realtime-info">
