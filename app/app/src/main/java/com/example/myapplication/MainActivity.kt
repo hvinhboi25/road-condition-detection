@@ -84,6 +84,7 @@ fun DeepLearningApp(modifier: Modifier = Modifier, onLogout: () -> Unit) {
     var resultImage by remember { mutableStateOf<Bitmap?>(null) }
     var predictions by remember { mutableStateOf<List<Detection>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     val tensorFlowHelper = remember { SimpleTensorFlowHelper(context) }
     val firebaseService = remember { FirebaseService(context) }
     val cloudinaryService = remember { CloudinaryService(context) }
@@ -138,6 +139,57 @@ fun DeepLearningApp(modifier: Modifier = Modifier, onLogout: () -> Unit) {
     // Permissions
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_FINE_LOCATION)
+    
+    // Camera launcher
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && cameraImageUri != null) {
+            try {
+                val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, cameraImageUri)
+                selectedImage = bitmap
+                resultImage = null
+                predictions = emptyList()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+    
+    // Function to create image URI for camera
+    fun createImageUri(): Uri {
+        val contentValues = android.content.ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, "road_detection_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+        }
+        return context.contentResolver.insert(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            contentValues
+        ) ?: Uri.EMPTY
+    }
+    
+    // Real-time camera launcher
+    val realTimeCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            // Lấy kết quả từ CapturedImageHolder
+            CapturedImageHolder.bitmap?.let { bitmap ->
+                CapturedImageHolder.detections?.let { detections ->
+                    selectedImage = bitmap
+                    resultImage = bitmap
+                    predictions = detections
+                    
+                    // Clear holder
+                    CapturedImageHolder.bitmap = null
+                    CapturedImageHolder.detections = null
+                    
+                    // Auto upload
+                    uploadDetections(bitmap, detections, isLocationPermissionGranted = locationPermissionState.status.isGranted)
+                }
+            }
+        }
+    }
     
     // Media picker (images + videos)
     val mediaPickerLauncher = rememberLauncherForActivityResult(
@@ -400,27 +452,29 @@ fun DeepLearningApp(modifier: Modifier = Modifier, onLogout: () -> Unit) {
                 )
             }
 
-            // Camera Button (requires camera permission)
+            // Camera Button (Real-time detection)
             Button(
                 onClick = {
                     if (cameraPermissionState.status.isGranted) {
-                        // Camera functionality can be added here
+                        // Launch real-time camera activity
+                        val intent = android.content.Intent(context, CameraActivity::class.java)
+                        realTimeCameraLauncher.launch(intent)
                     } else {
                         cameraPermissionState.launchPermissionRequest()
                     }
                 },
-                enabled = false,
+                enabled = true,
                 modifier = Modifier
                     .weight(1f)
                     .height(56.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFBDBDBD)
+                    containerColor = Color(0xFF2196F3)
                 ),
                 shape = RoundedCornerShape(16.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
                 Text(
-                    text = "Camera",
+                    text = "📷 Camera",
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium
                 )

@@ -1,6 +1,9 @@
 package com.example.myapplication
 
 import android.graphics.*
+import androidx.camera.core.ImageProxy
+import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import kotlin.math.min
 
 object ImageUtils {
@@ -68,5 +71,19 @@ object ImageUtils {
         val newHeight = (height * scale).toInt()
         
         return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+    }
+}
+
+// Extension function to convert ImageProxy to Bitmap
+fun ImageProxy.toBitmap(): Bitmap {
+    val buffer: ByteBuffer = planes[0].buffer
+    val bytes = ByteArray(buffer.remaining())
+    buffer.get(bytes)
+    
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size).let { bitmap ->
+        // Rotate bitmap based on rotation degrees
+        val matrix = Matrix()
+        matrix.postRotate(imageInfo.rotationDegrees.toFloat())
+        Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 }
