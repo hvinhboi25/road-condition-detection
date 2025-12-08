@@ -33,9 +33,21 @@ const Header = ({
                   <span className="user-email">{user.email}</span>
                 </div>
               </div>
-              <button onClick={onLogout} className="logout-button">
-                Đăng xuất
-              </button>
+              <div className="header-actions">
+                <a 
+                  href="https://github.com/hvinhboi25/road-condition-detection/releases/download/v1.0.0/app-debug.apk" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="download-apk-button"
+                  title="Tải xuống ứng dụng Android"
+                >
+                  <span className="download-icon">📱</span>
+                  <span>Tải App</span>
+                </a>
+                <button onClick={onLogout} className="logout-button">
+                  Đăng xuất
+                </button>
+              </div>
             </div>
           )}
         </div>

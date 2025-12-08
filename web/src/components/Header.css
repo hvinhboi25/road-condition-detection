@@ -5,6 +5,8 @@
   border-bottom: none;
   padding: 20px 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
 }
 
 .header-content {
@@ -305,7 +307,22 @@
   
   .user-section {
     width: 100%;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .header-actions {
+    width: 100%;
+    flex-direction: row;
+    gap: 10px;
+  }
+  
+  .download-apk-button,
+  .logout-button {
+    flex: 1;
+    font-size: 14px;
+    padding: 10px 14px;
+    justify-content: center;
   }
   
   .title {

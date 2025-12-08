@@ -127,13 +127,49 @@
 
 /* Responsive Filter */
 @media (max-width: 768px) {
+  .filter-section {
+    padding: 15px;
+    margin-bottom: 1.5rem;
+  }
+  
+  .filter-header {
+    margin-bottom: 1rem;
+  }
+  
+  .filter-header h3 {
+    font-size: 16px;
+  }
+  
   .filter-controls {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+  
+  .filter-group {
+    width: 100%;
+  }
+  
+  .search-input {
+    width: 100%;
+    max-width: none;
+  }
+  
+  .location-select {
+    width: 100%;
+    max-width: none;
   }
   
   .filter-actions {
+    width: 100%;
+    display: flex;
     justify-content: center;
+  }
+  
+  .clear-filters-btn {
+    width: 100%;
+    max-width: 250px;
   }
 }
 
